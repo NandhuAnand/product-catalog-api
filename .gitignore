@@ -1,0 +1,13 @@
+# Build folders
+bin/
+obj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+*.backup.csproj
+
+# Secrets
+appsettings.Development.json
