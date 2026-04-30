@@ -2,6 +2,7 @@
 using ProductCatalog.Application.Exceptions;
 using ProductCatalog.Application.Interfaces;
 using ProductCatalog.Domain.Entities;
+using ProductCatalog.Application.Mapping;
 
 namespace ProductCatalog.Application.Services;
 
@@ -30,7 +31,7 @@ public class ProductService : IProductService
         await _productRepository.AddAsync(product, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return MapToDto(product);
+        return ProductMapper.ToDto(product);
     }
 
     public async Task<ProductDto> GetByIdAsync(int id, CancellationToken cancellationToken)
@@ -40,7 +41,7 @@ public class ProductService : IProductService
         if (product is null)
             throw new NotFoundException($"Product with id {id} was not found.");
 
-        return MapToDto(product);
+        return ProductMapper.ToDto(product);
     }
 
     public async Task<PagedResponse<ProductDto>> GetPagedAsync(
@@ -55,7 +56,7 @@ public class ProductService : IProductService
         var totalCount = await _productRepository.CountAsync(cancellationToken);
 
         return new PagedResponse<ProductDto>(
-            products.Select(MapToDto).ToList(),
+            products.Select(ProductMapper.ToDto).ToList(),
             pageNumber,
             pageSize,
             totalCount);
@@ -72,7 +73,7 @@ public class ProductService : IProductService
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return MapToDto(product);
+        return ProductMapper.ToDto(product);
     }
 
     public async Task DeleteAsync(int id, CancellationToken cancellationToken)
@@ -86,15 +87,4 @@ public class ProductService : IProductService
         await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
-    private static ProductDto MapToDto(Product product)
-    {
-        return new ProductDto(
-            product.Id,
-            product.ProductName,
-            product.CreatedBy,
-            product.CreatedOn,
-            product.ModifiedBy,
-            product.ModifiedOn,
-            product.Items.Sum(x => x.Quantity));
-    }
 }
