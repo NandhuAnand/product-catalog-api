@@ -3,12 +3,14 @@ using Microsoft.AspNetCore.Mvc;
 using ProductCatalog.Application.DTOs;
 using ProductCatalog.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using Asp.Versioning;
 
 namespace ProductCatalog.Api.Controllers;
 
 [ApiController]
-[Authorize]
-[Route("api/v1/products")]
+[Authorize(Roles = "Admin,Guest")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/products")]
 public class ProductsController : ControllerBase
 {
     private readonly IProductService _productService;
