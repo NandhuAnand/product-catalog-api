@@ -75,6 +75,28 @@ FluentValidation is used for request validation in the application layer.
 - HTTPS enforced using middleware
 - Security headers added to mitigate common web vulnerabilities
 
+## API Versioning
+
+The API uses URL-based versioning.
+
+Example:
+
+GET /api/v1/products
+
+This allows future versions such as /api/v2/products without breaking existing clients.
+
+## Observability
+
+OpenTelemetry is configured for traces and metrics.
+
+Currently:
+- ASP.NET Core request tracing
+- HTTP client tracing
+- Console exporter for local development
+
+Production:
+- Export telemetry to Azure Monitor / Application Insights
+
 ## Database
 SQL Server is used with EF Core migrations.
 

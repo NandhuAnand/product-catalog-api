@@ -5,8 +5,20 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using ProductCatalog.Api.Options;
 using Asp.Versioning;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using System.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Logging.Configure(options =>
+{
+    options.ActivityTrackingOptions =
+        ActivityTrackingOptions.TraceId |
+        ActivityTrackingOptions.SpanId |
+        ActivityTrackingOptions.ParentId;
+});
 
 // Add services
 
@@ -24,6 +36,7 @@ builder.Services
         options.SubstituteApiVersionInUrl = true;
     });
 
+//never use AllowAnyOrigin() in production for secure APIs.
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -33,6 +46,7 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod();
     });
 });
+
 builder.Services.AddControllers();
 builder.Services.Configure<JwtOptions>(
     builder.Configuration.GetSection("Jwt"));
@@ -102,7 +116,8 @@ builder.Services.AddProblemDetails(options =>
     options.CustomizeProblemDetails = context =>
     {
         context.ProblemDetails.Extensions["traceId"] =
-            context.HttpContext.TraceIdentifier;
+             Activity.Current?.TraceId.ToString()
+            ?? context.HttpContext.TraceIdentifier;
 
         context.ProblemDetails.Extensions["path"] =
             context.HttpContext.Request.Path.ToString();
@@ -111,7 +126,33 @@ builder.Services.AddProblemDetails(options =>
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
+
+
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource =>
+    {
+        resource.AddService(
+            serviceName: "ProductCatalog.Api",
+            serviceVersion: "1.0.0");
+    })
+    .WithTracing(tracing =>
+    {
+        tracing
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddConsoleExporter();
+    })
+    .WithMetrics(metrics =>
+    {
+        metrics
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddConsoleExporter();
+    });
+
 var app = builder.Build();
+
+app.UseHttpsRedirection();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -120,15 +161,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
-app.UseCors("AllowAll");
-app.UseResponseCompression();
-
 app.UseExceptionHandler();
-
-app.UseAuthentication();
-
-app.UseAuthorization();
 
 app.Use(async (context, next) =>
 {
@@ -139,6 +172,11 @@ app.Use(async (context, next) =>
     await next();
 });
 
+
+app.UseCors("AllowAll");
+app.UseResponseCompression();
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
